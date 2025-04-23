@@ -13,5 +13,5 @@ app.use(express.static(path.join(__dirname, 'public')));
 app.use('/api/books', BookRoute);
 
 app.listen(PORT, () => {
-  console.log(`🚀 Server running at http://localhost:${PORT}`);
+  console.log(`Server running at http://localhost:${PORT}`);
 });

@@ -3,13 +3,19 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Liste des books</title>
+  <title>List of books</title>
 </head>
 <body>
   <h1>BOOKS</h1>
+  <form id="bookform">
+    <input type="name" id="author" placeholder="author" required />
+    <input type="text" id="title" placeholder="title" required />
+    <input type="text" id="descreption" placeholder="descreption" required />
+    <button type="submit">add book</button>
+  </form>
   <ul id="booksList"></ul>
-
   <script>
+    function fetchBooks(){
     fetch('/api/books')
       .then(response => response.json())
       .then(books => {
@@ -21,6 +27,34 @@
         });
       })
       .catch(error => console.error('Erreur lors du chargement:', error));
+    }
+    fetchBooks();
+    
+    const bookform = document.getElementById('bookform');
+
+    bookform.addEventListener('submit', (e) => {
+        e.preventDefault();
+
+        const author = document.getElementById('author').value.trim();
+        const title = document.getElementById('title').value.trim();
+        const descreption = document.getElementById('descreption').value.trim();
+
+        fetch('./api/books', {
+            mathode: 'post',
+            headers: {'cintent-type': 'application/json'},
+            body: JSON.stringify({author, title, descreption})
+        })
+        .then(res => res.json())
+        .then(() => {
+            bookform.reset();
+            fetchBooks();
+        
+        })
+        .catch(err => console.error(err));
+    });
+
+
+
   </script>
 </body>
 </html>
