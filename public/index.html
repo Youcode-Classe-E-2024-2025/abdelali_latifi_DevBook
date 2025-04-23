@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Liste des books</title>
+</head>
+<body>
+  <h1>BOOKS</h1>
+  <ul id="booksList"></ul>
+
+  <script>
+    fetch('/api/books')
+      .then(response => response.json())
+      .then(books => {
+        const list = document.getElementById('booksList');
+        books.forEach(book => {
+          const li = document.createElement('li');
+          li.textContent = `${book.author} - ${book.title} - ${book.descreption}`;
+          list.appendChild(li);
+        });
+      })
+      .catch(error => console.error('Erreur lors du chargement:', error));
+  </script>
+</body>
+</html>
