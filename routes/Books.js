@@ -1,8 +1,9 @@
 const express = require('express');
 const router = express.Router();
 const db = require('../config/db');
+const { auth } = require('../middleware/auth');
 
-// Récupérer tous les livres
+// Récupérer tous les livres (accessible sans authentification)
 router.get('/api/books', (req, res) => {
   db.query('SELECT * FROM books', (err, results) => {
     if (err) {
@@ -13,7 +14,7 @@ router.get('/api/books', (req, res) => {
   });
 });
 
-// Récupérer un livre par son ID
+// Récupérer un livre par son ID (accessible sans authentification)
 router.get('/api/books/:id', (req, res) => {
   const id = req.params.id;
   db.query('SELECT * FROM books WHERE id = ?', [id], (err, results) => {
@@ -28,8 +29,8 @@ router.get('/api/books/:id', (req, res) => {
   });
 });
 
-// Créer un nouveau livre
-router.post('/api/books', (req, res) => {
+// Créer un nouveau livre (nécessite authentification)
+router.post('/api/books', auth, (req, res) => {
   const { author, title, description } = req.body;
   
   if (!author || !title) {
@@ -49,8 +50,8 @@ router.post('/api/books', (req, res) => {
   );
 });
 
-// Mettre à jour un livre
-router.put('/api/books/:id', (req, res) => {
+// Mettre à jour un livre (nécessite authentification)
+router.put('/api/books/:id', auth, (req, res) => {
   const id = req.params.id;
   const { author, title, description } = req.body;
   
@@ -74,8 +75,8 @@ router.put('/api/books/:id', (req, res) => {
   );
 });
 
-// Supprimer un livre
-router.delete('/api/books/:id', (req, res) => {
+// Supprimer un livre (nécessite authentification)
+router.delete('/api/books/:id', auth, (req, res) => {
   const id = req.params.id;
   
   db.query('DELETE FROM books WHERE id = ?', [id], (err, result) => {
