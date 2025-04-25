@@ -1,0 +1,15 @@
+<header>
+  <h1>Bienvenue sur notre site</h1>
+  <nav>
+    <ul>
+      <li><a href="/">Accueil</a></li>
+      <% if (!user) { %>
+        <li><a href="/register">S'inscrire</a></li>
+        <li><a href="/login">Se connecter</a></li>
+      <% } else { %>
+        <li><a href="/dashboard">Tableau de bord</a></li>
+        <li><a href="/logout">Se déconnecter</a></li>
+      <% } %>
+    </ul>
+  </nav>
+</header>

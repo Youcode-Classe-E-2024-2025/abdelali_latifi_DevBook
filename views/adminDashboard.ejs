@@ -1,0 +1,418 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Tableau de bord Admin - Gestion</title>
+  <!-- Simple CSS pour les modals et un peu d'espacement -->
+  <style>
+    body { font-family: sans-serif; }
+    .container { padding: 20px; }
+    table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+    th, td { border: 1px solid #ccc; padding: 8px; text-align: left; }
+    th { background-color: #f2f2f2; }
+    button { margin: 5px; padding: 8px 12px; cursor: pointer; }
+    .modal {
+      display: none; /* Caché par défaut */
+      position: fixed; /* Reste en place */
+      z-index: 1; /* Se place au-dessus */
+      left: 0;
+      top: 0;
+      width: 100%;
+      height: 100%;
+      overflow: auto; /* Active le scroll si nécessaire */
+      background-color: rgba(0,0,0,0.4); /* Fond noir semi-transparent */
+    }
+    .modal-content {
+      background-color: #fefefe;
+      margin: 15% auto; /* 15% du haut et centré */
+      padding: 20px;
+      border: 1px solid #888;
+      width: 80%; /* Peut être ajusté */
+      max-width: 500px; /* Largeur maximale */
+    }
+    label { display: block; margin-bottom: 5px; }
+    input[type=text], input[type=number], select {
+      width: calc(100% - 22px); /* Ajuste la largeur pour le padding/border */
+      padding: 10px;
+      margin-bottom: 15px;
+      border: 1px solid #ccc;
+    }
+    form button { margin-top: 10px; }
+    h1, h2 { margin-top: 0; }
+    hr { margin: 30px 0; border: 0; border-top: 1px solid #eee; }
+  </style>
+  <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+</head>
+<body>
+  <div class="container">
+    <h1>Gestion des Livres</h1>
+
+    <!-- Bouton pour ouvrir le modal d'ajout de livre -->
+    <button id="openAddBookModal">Ajouter un livre</button>
+
+    <!-- Table des livres -->
+    <table id="booksTable">
+      <thead>
+        <tr>
+          <th>Titre</th>
+          <th>Stock</th>
+          <th>Nombre de pages</th>
+          <th>Genre</th>
+          <th>Auteur</th>
+          <th>Catégorie ID</th> <!-- Afficher l'ID pour le moment -->
+          <th>Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        <!-- Les livres seront ajoutés dynamiquement ici via AJAX -->
+      </tbody>
+    </table>
+
+    <hr> <!-- Séparateur visuel -->
+
+    <h1>Gestion des Catégories</h1>
+
+    <!-- Bouton pour ouvrir le modal d'ajout de catégorie -->
+    <button id="openAddCategoryModal">Ajouter une catégorie</button>
+
+    <!-- Table des catégories -->
+    <table id="categoriesTable">
+      <thead>
+        <tr>
+          <th>Nom de la Catégorie</th>
+          <th>Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        <!-- Les catégories seront ajoutées dynamiquement ici via AJAX -->
+      </tbody>
+    </table>
+
+    <!-- Modal pour l'ajout et la modification des livres -->
+    <div id="bookModal" class="modal">
+      <div class="modal-content">
+        <h2 id="bookModalTitle">Ajouter un Livre</h2>
+        <form id="bookForm"  action="/books" method="POST">
+          <input type="hidden" id="bookId" name="bookId">
+          <div>
+            <label for="title">Titre</label>
+            <input type="text" id="title" name="title" required>
+          </div>
+          <div>
+            <label for="stock">Stock</label>
+            <input type="number" id="stock" name="stock" required>
+          </div>
+          <div>
+            <label for="page_count">Nombre de pages</label>
+            <input type="number" id="page_count" name="page_count" required>
+          </div>
+          <div>
+            <label for="genre">Genre</label>
+            <input type="text" id="genre" name="genre" required>
+          </div>
+          <div>
+            <label for="author">Auteur</label>
+            <input type="text" id="author" name="author" required>
+          </div>
+          <div>
+            <label for="category_id">Catégorie ID</label>
+             <!-- Idéalement, ceci devrait être un <select> peuplé avec les catégories -->
+            <input type="number" id="category_id" name="category_id" required>
+            <!-- Suggestion: Remplacer l'input number par un select -->
+            <!-- <select id="category_id_select" name="category_id" required> -->
+                 <!-- Options chargées dynamiquement -->
+            <!-- </select> -->
+          </div>
+          <button type="submit">Sauvegarder</button>
+          <button type="button" class="closeModalBtn" data-modal-id="bookModal">Fermer</button>
+        </form>
+      </div>
+    </div>
+
+    <!-- Modal pour l'ajout et la modification des catégories -->
+    <div id="categoryModal" class="modal">
+      <div class="modal-content">
+        <h2 id="categoryModalTitle">Ajouter une Catégorie</h2>
+        <form id="categoryForm" action="/categories" method="POST">
+          <input type="hidden" id="categoryId" name="categoryId">
+          <div>
+            <label for="categoryName">Nom de la catégorie</label>
+            <input type="text" id="categoryName" name="name" required> <!-- name="name" correspond souvent au nom du champ en BDD -->
+          </div>
+          <button type="submit">Sauvegarder</button>
+          <button type="button" class="closeModalBtn" data-modal-id="categoryModal">Fermer</button>
+        </form>
+      </div>
+    </div>
+
+  </div>
+
+  <script>
+    $(document).ready(function() {
+      // --- Chargement initial ---
+      loadBooks();
+      loadCategories();
+      // loadCategoriesIntoSelect(); // Charger les catégories dans le select du modal livre
+
+      // --- Gestion des Livres ---
+
+      // Ouvrir le modal pour ajouter un livre
+      $('#openAddBookModal').click(function() {
+        $('#bookForm')[0].reset();
+        $('#bookId').val('');
+        $('#bookModalTitle').text('Ajouter un Livre');
+        $('#bookModal').show();
+        // loadCategoriesIntoSelect(); // Recharger au cas où des catégories ont été ajoutées
+      });
+
+      // Soumettre le formulaire livre (Ajout/Modification)
+      $('#bookForm').submit(function(e) {
+        e.preventDefault();
+        const bookData = {
+          title: $('#title').val(),
+          stock: $('#stock').val(),
+          page_count: $('#page_count').val(),
+          genre: $('#genre').val(),
+          author: $('#author').val(),
+          category_id: $('#category_id').val(), // Ou utiliser $('#category_id_select').val() si vous utilisez un select
+        };
+        const bookId = $('#bookId').val();
+        const url = bookId ? `/books/${bookId}` : '/books';
+        const method = bookId ? 'PUT' : 'POST';
+
+        $.ajax({
+          url: url,
+          method: method,
+          contentType: 'application/json', // Important si votre backend attend du JSON
+          data: JSON.stringify(bookData), // Envoyer en JSON
+          success: function(response) {
+            // Utiliser un message plus générique ou spécifique de la réponse
+            alert(response.message || (bookId ? 'Livre mis à jour avec succès !' : 'Livre ajouté avec succès !'));
+            loadBooks();
+            $('#bookModal').hide();
+          },
+          error: function(jqXHR, textStatus, errorThrown) {
+            console.error("Erreur AJAX:", textStatus, errorThrown, jqXHR.responseText);
+            alert('Erreur lors de l\'opération sur le livre: ' + (jqXHR.responseJSON?.message || errorThrown));
+          }
+        });
+      });
+
+      // Fonction pour charger les livres
+      function loadBooks() {
+        $.ajax({
+          url: '/books',
+          method: 'GET',
+          success: function(data) {
+            const tbody = $('#booksTable tbody');
+            tbody.empty();
+            data.forEach(function(book) {
+              // Assurez-vous que les propriétés correspondent à votre API (ex: book.category.name si l'API renvoie l'objet catégorie)
+              const row = `
+                <tr>
+                  <td>${book.title || 'N/A'}</td>
+                  <td>${book.stock || 0}</td>
+                  <td>${book.page_count || 'N/A'}</td>
+                  <td>${book.genre || 'N/A'}</td>
+                  <td>${book.author || 'N/A'}</td>
+                  <td>${book.category_id || 'N/A'}</td>
+                  <td>
+                    <button class="editBookBtn" data-id="${book.id}">Modifier</button>
+                    <button class="deleteBookBtn" data-id="${book.id}">Supprimer</button>
+                  </td>
+                </tr>
+              `;
+              tbody.append(row);
+            });
+          },
+          error: function() {
+            $('#booksTable tbody').html('<tr><td colspan="7">Erreur lors du chargement des livres.</td></tr>');
+          }
+        });
+      }
+
+      // Gérer clic modification livre (nécessite délégation car boutons ajoutés dynamiquement)
+      $('#booksTable tbody').on('click', '.editBookBtn', function() {
+        const bookId = $(this).data('id');
+        $.ajax({
+          url: `/books/${bookId}`,
+          method: 'GET',
+          success: function(book) {
+            $('#bookId').val(book.id);
+            $('#title').val(book.title);
+            $('#stock').val(book.stock);
+            $('#page_count').val(book.page_count);
+            $('#genre').val(book.genre);
+            $('#author').val(book.author);
+            $('#category_id').val(book.category_id); // Ou $('#category_id_select').val(book.category_id)
+            $('#bookModalTitle').text('Modifier un Livre');
+            // loadCategoriesIntoSelect(book.category_id); // Pré-sélectionner la bonne catégorie
+            $('#bookModal').show();
+          },
+           error: function() { alert('Impossible de charger les détails du livre.'); }
+        });
+      });
+
+      // Gérer clic suppression livre (nécessite délégation)
+      $('#booksTable tbody').on('click', '.deleteBookBtn', function() {
+        const bookId = $(this).data('id');
+        if (confirm('Êtes-vous sûr de vouloir supprimer ce livre ?')) {
+          $.ajax({
+            url: `/books/${bookId}`,
+            method: 'DELETE',
+            success: function(response) {
+              alert(response.message || 'Livre supprimé avec succès !');
+              loadBooks();
+            },
+            error: function(jqXHR) {
+               alert('Erreur lors de la suppression du livre: ' + (jqXHR.responseJSON?.message || 'Erreur inconnue'));
+            }
+          });
+        }
+      });
+
+
+      // --- Gestion des Catégories ---
+
+      // Ouvrir le modal pour ajouter une catégorie
+      $('#openAddCategoryModal').click(function() {
+        $('#categoryForm')[0].reset();
+        $('#categoryId').val('');
+        $('#categoryModalTitle').text('Ajouter une Catégorie');
+        $('#categoryModal').show();
+      });
+
+      // Soumettre le formulaire catégorie (Ajout/Modification)
+      $('#categoryForm').submit(function(e) {
+        e.preventDefault();
+        const categoryData = {
+          name: $('#categoryName').val(),
+        };
+        const categoryId = $('#categoryId').val();
+        const url = categoryId ? `/categories/${categoryId}` : '/categories';
+        const method = categoryId ? 'PUT' : 'POST';
+
+        $.ajax({
+          url: url,
+          method: method,
+          contentType: 'application/json', // Important si votre backend attend du JSON
+          data: JSON.stringify(categoryData), // Envoyer en JSON
+          success: function(response) {
+            alert(response.message || (categoryId ? 'Catégorie mise à jour !' : 'Catégorie ajoutée !'));
+            loadCategories();
+            // loadCategoriesIntoSelect(); // Mettre à jour le select dans le modal livre
+            $('#categoryModal').hide();
+          },
+          error: function(jqXHR, textStatus, errorThrown) {
+             console.error("Erreur AJAX:", textStatus, errorThrown, jqXHR.responseText);
+             alert('Erreur lors de l\'opération sur la catégorie: ' + (jqXHR.responseJSON?.message || errorThrown));
+          }
+        });
+      });
+
+      // Fonction pour charger les catégories
+      function loadCategories() {
+        $.ajax({
+          url: '/categories',
+          method: 'GET',
+          success: function(data) {
+            const tbody = $('#categoriesTable tbody');
+            tbody.empty();
+            if (data && data.length > 0) {
+              data.forEach(function(category) {
+                const row = `
+                  <tr>
+                    <td>${category.name || 'N/A'}</td>
+                    <td>
+                      <button class="editCategoryBtn" data-id="${category.id}" data-name="${category.name}">Modifier</button>
+                      <button class="deleteCategoryBtn" data-id="${category.id}">Supprimer</button>
+                    </td>
+                  </tr>
+                `;
+                tbody.append(row);
+              });
+            } else {
+               tbody.html('<tr><td colspan="2">Aucune catégorie trouvée.</td></tr>');
+            }
+          },
+          error: function() {
+            $('#categoriesTable tbody').html('<tr><td colspan="2">Erreur lors du chargement des catégories.</td></tr>');
+          }
+        });
+      }
+
+      // Gérer clic modification catégorie (délégation)
+      $('#categoriesTable tbody').on('click', '.editCategoryBtn', function() {
+        const categoryId = $(this).data('id');
+        const categoryName = $(this).data('name'); // On récupère le nom du data-attribut pour éviter un appel AJAX juste pour ça
+
+        $('#categoryId').val(categoryId);
+        $('#categoryName').val(categoryName);
+        $('#categoryModalTitle').text('Modifier une Catégorie');
+        $('#categoryModal').show();
+      });
+
+      // Gérer clic suppression catégorie (délégation)
+      $('#categoriesTable tbody').on('click', '.deleteCategoryBtn', function() {
+        const categoryId = $(this).data('id');
+        if (confirm('Êtes-vous sûr de vouloir supprimer cette catégorie ? Attention, cela pourrait affecter les livres associés.')) {
+          $.ajax({
+            url: `/categories/${categoryId}`,
+            method: 'DELETE',
+            success: function(response) {
+              alert(response.message || 'Catégorie supprimée avec succès !');
+              loadCategories();
+              // loadCategoriesIntoSelect(); // Mettre à jour le select dans le modal livre
+            },
+            error: function(jqXHR) {
+               alert('Erreur lors de la suppression de la catégorie: ' + (jqXHR.responseJSON?.message || 'Vérifiez si des livres utilisent encore cette catégorie.'));
+            }
+          });
+        }
+      });
+
+
+      // --- Gestion Commune des Modals ---
+
+      // Fermer un modal via son bouton "Fermer"
+      $('.closeModalBtn').click(function() {
+        const modalId = $(this).data('modal-id');
+        $('#' + modalId).hide();
+      });
+
+      // Fermer un modal en cliquant en dehors de son contenu (optionnel)
+      $('.modal').click(function(event) {
+        // Si on clique directement sur le fond gris (le modal lui-même)
+        if (event.target === this) {
+          $(this).hide();
+        }
+      });
+
+
+     /* // --- (Optionnel mais recommandé) Charger les catégories dans un Select pour le modal Livre ---
+      function loadCategoriesIntoSelect(selectedCategoryId = null) {
+          $.ajax({
+              url: '/categories',
+              method: 'GET',
+              success: function(categories) {
+                  const select = $('#category_id_select'); // Assurez-vous que l'ID correspond à votre select
+                  select.empty(); // Vider les anciennes options
+                  select.append('<option value="">-- Sélectionnez une catégorie --</option>'); // Option par défaut
+                  categories.forEach(function(category) {
+                      const selected = category.id == selectedCategoryId ? ' selected' : '';
+                      select.append(`<option value="${category.id}"${selected}>${category.name}</option>`);
+                  });
+              },
+              error: function() {
+                  // Gérer l'erreur si les catégories ne peuvent pas être chargées dans le select
+                  $('#category_id_select').html('<option value="">Erreur chargement catégories</option>');
+              }
+          });
+      }
+     */
+
+    });
+  </script>
+</body>
+</html>
