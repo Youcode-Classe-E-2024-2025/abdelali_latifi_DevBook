@@ -1,60 +1,228 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="fr">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>List of books</title>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Gestion des Livres</title>
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.0/css/bootstrap.min.css" rel="stylesheet">
+  <style>
+    .book-form {
+      margin-bottom: 30px;
+    }
+    .book-card {
+      margin-bottom: 20px;
+    }
+  </style>
 </head>
 <body>
-  <h1>BOOKS</h1>
-  <form id="bookform">
-    <input type="name" id="author" placeholder="author" required />
-    <input type="text" id="title" placeholder="title" required />
-    <input type="text" id="descreption" placeholder="descreption" required />
-    <button type="submit">add book</button>
-  </form>
-  <ul id="booksList"></ul>
-  <script>
-    function fetchBooks(){
-    fetch('/api/books')
-      .then(response => response.json())
-      .then(books => {
-        const list = document.getElementById('booksList');
-        books.forEach(book => {
-          const li = document.createElement('li');
-          li.textContent = `${book.author} - ${book.title} - ${book.descreption}`;
-          list.appendChild(li);
-        });
-      })
-      .catch(error => console.error('Erreur lors du chargement:', error));
-    }
-    fetchBooks();
+  <div class="container mt-4">
+    <h1 class="mb-4">Gestion des Livres</h1>
     
-    const bookform = document.getElementById('bookform');
-
-    bookform.addEventListener('submit', (e) => {
+    <!-- Formulaire pour ajouter/modifier un livre -->
+    <div class="card book-form">
+      <div class="card-header">
+        <h5 id="formTitle">Ajouter un nouveau livre</h5>
+      </div>
+      <div class="card-body">
+        <form id="bookForm">
+          <input type="hidden" id="bookId">
+          <div class="mb-3">
+            <label for="author" class="form-label">Auteur</label>
+            <input type="text" class="form-control" id="author" required>
+          </div>
+          <div class="mb-3">
+            <label for="title" class="form-label">Titre</label>
+            <input type="text" class="form-control" id="title" required>
+          </div>
+          <div class="mb-3">
+            <label for="description" class="form-label">Description</label>
+            <textarea class="form-control" id="description" rows="3"></textarea>
+          </div>
+          <button type="submit" class="btn btn-primary" id="submitBtn">Ajouter</button>
+          <button type="button" class="btn btn-secondary d-none" id="cancelBtn">Annuler</button>
+        </form>
+      </div>
+    </div>
+    
+    <!-- Liste des livres -->
+    <h2>Liste des livres</h2>
+    <div id="booksList" class="row">
+      <!-- Les livres seront ajoutés ici dynamiquement -->
+    </div>
+  </div>
+  
+  <script>
+    document.addEventListener('DOMContentLoaded', () => {
+      const bookForm = document.getElementById('bookForm');
+      const formTitle = document.getElementById('formTitle');
+      const submitBtn = document.getElementById('submitBtn');
+      const cancelBtn = document.getElementById('cancelBtn');
+      const booksList = document.getElementById('booksList');
+      
+      let isEditing = false;
+      
+      // Charger tous les livres au chargement de la page
+      fetchBooks();
+      
+      // Gestionnaire pour le formulaire
+      bookForm.addEventListener('submit', async (e) => {
         e.preventDefault();
-
-        const author = document.getElementById('author').value.trim();
-        const title = document.getElementById('title').value.trim();
-        const descreption = document.getElementById('descreption').value.trim();
-
-        fetch('./api/books', {
-            mathode: 'post',
-            headers: {'cintent-type': 'application/json'},
-            body: JSON.stringify({author, title, descreption})
-        })
-        .then(res => res.json())
-        .then(() => {
-            bookform.reset();
-            fetchBooks();
         
-        })
-        .catch(err => console.error(err));
+        const bookId = document.getElementById('bookId').value;
+        const author = document.getElementById('author').value;
+        const title = document.getElementById('title').value;
+        const description = document.getElementById('description').value;
+        
+        const bookData = { author, title, description };
+        
+        try {
+          if (isEditing) {
+            // Mise à jour d'un livre existant
+            await updateBook(bookId, bookData);
+          } else {
+            // Création d'un nouveau livre
+            await createBook(bookData);
+          }
+          
+          // Réinitialiser le formulaire
+          resetForm();
+          
+          // Recharger la liste des livres
+          fetchBooks();
+        } catch (error) {
+          console.error('Erreur:', error);
+          alert('Une erreur est survenue');
+        }
+      });
+      
+      // Bouton annuler
+      cancelBtn.addEventListener('click', () => {
+        resetForm();
+      });
+      
+      // Fonctions
+      async function fetchBooks() {
+        try {
+          const response = await fetch('/api/books');
+          const books = await response.json();
+          
+          // Vider la liste actuelle
+          booksList.innerHTML = '';
+          
+          // Ajouter chaque livre à la liste
+          books.forEach(book => {
+            const bookCard = createBookCard(book);
+            booksList.appendChild(bookCard);
+          });
+        } catch (error) {
+          console.error('Erreur lors du chargement des livres:', error);
+          booksList.innerHTML = '<div class="col-12"><p class="text-danger">Erreur lors du chargement des livres</p></div>';
+        }
+      }
+      
+      function createBookCard(book) {
+        const col = document.createElement('div');
+        col.className = 'col-md-4';
+        
+        col.innerHTML = `
+          <div class="card book-card">
+            <div class="card-body">
+              <h5 class="card-title">${book.title}</h5>
+              <h6 class="card-subtitle mb-2 text-muted">Par ${book.author}</h6>
+              <p class="card-text">${book.description || 'Pas de description'}</p>
+              <button class="btn btn-sm btn-primary edit-btn" data-id="${book.id}">Modifier</button>
+              <button class="btn btn-sm btn-danger delete-btn" data-id="${book.id}">Supprimer</button>
+            </div>
+          </div>
+        `;
+        
+        // Ajouter les gestionnaires d'événements
+        col.querySelector('.edit-btn').addEventListener('click', () => editBook(book));
+        col.querySelector('.delete-btn').addEventListener('click', () => deleteBook(book.id));
+        
+        return col;
+      }
+      
+      function editBook(book) {
+        // Remplir le formulaire avec les données du livre
+        document.getElementById('bookId').value = book.id;
+        document.getElementById('author').value = book.author;
+        document.getElementById('title').value = book.title;
+        document.getElementById('description').value = book.description || '';
+        
+        // Changer le mode du formulaire
+        isEditing = true;
+        formTitle.textContent = 'Modifier un livre';
+        submitBtn.textContent = 'Mettre à jour';
+        cancelBtn.classList.remove('d-none');
+        
+        // Faire défiler vers le formulaire
+        bookForm.scrollIntoView({ behavior: 'smooth' });
+      }
+      
+      async function updateBook(id, bookData) {
+        const response = await fetch(`/api/books/${id}`, {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify(bookData)
+        });
+        
+        if (!response.ok) {
+          throw new Error('Erreur lors de la mise à jour du livre');
+        }
+        
+        return response.json();
+      }
+      
+      async function createBook(bookData) {
+        const response = await fetch('/api/books', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify(bookData)
+        });
+        
+        if (!response.ok) {
+          throw new Error('Erreur lors de la création du livre');
+        }
+        
+        return response.json();
+      }
+      
+      async function deleteBook(id) {
+        if (!confirm('Êtes-vous sûr de vouloir supprimer ce livre ?')) {
+          return;
+        }
+        
+        try {
+          const response = await fetch(`/api/books/${id}`, {
+            method: 'DELETE'
+          });
+          
+          if (!response.ok) {
+            throw new Error('Erreur lors de la suppression du livre');
+          }
+          
+          // Recharger la liste des livres
+          fetchBooks();
+        } catch (error) {
+          console.error('Erreur:', error);
+          alert('Une erreur est survenue lors de la suppression');
+        }
+      }
+      
+      function resetForm() {
+        bookForm.reset();
+        document.getElementById('bookId').value = '';
+        isEditing = false;
+        formTitle.textContent = 'Ajouter un nouveau livre';
+        submitBtn.textContent = 'Ajouter';
+        cancelBtn.classList.add('d-none');
+      }
     });
-
-
-
   </script>
 </body>
 </html>
