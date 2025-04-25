@@ -6,11 +6,14 @@
   <title>Gestion des Livres</title>
   <link href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.0/css/bootstrap.min.css" rel="stylesheet">
   <style>
-    .book-form {
+    .book-form, .auth-form {
       margin-bottom: 30px;
     }
     .book-card {
       margin-bottom: 20px;
+    }
+    #authContainer, #contentContainer {
+      transition: opacity 0.3s ease;
     }
   </style>
 </head>
@@ -18,55 +21,210 @@
   <div class="container mt-4">
     <h1 class="mb-4">Gestion des Livres</h1>
     
-    <!-- Formulaire pour ajouter/modifier un livre -->
-    <div class="card book-form">
-      <div class="card-header">
-        <h5 id="formTitle">Ajouter un nouveau livre</h5>
-      </div>
-      <div class="card-body">
-        <form id="bookForm">
-          <input type="hidden" id="bookId">
-          <div class="mb-3">
-            <label for="author" class="form-label">Auteur</label>
-            <input type="text" class="form-control" id="author" required>
+    <!-- Section d'authentification -->
+    <div id="authContainer">
+      <div class="row">
+        <div class="col-md-6">
+          <div class="card auth-form">
+            <div class="card-header">
+              <h5>Connexion</h5>
+            </div>
+            <div class="card-body">
+              <form id="loginForm">
+                <div class="mb-3">
+                  <label for="loginEmail" class="form-label">Email</label>
+                  <input type="email" class="form-control" id="loginEmail" required>
+                </div>
+                <div class="mb-3">
+                  <label for="loginPassword" class="form-label">Mot de passe</label>
+                  <input type="password" class="form-control" id="loginPassword" required>
+                </div>
+                <button type="submit" class="btn btn-primary">Se connecter</button>
+              </form>
+            </div>
           </div>
-          <div class="mb-3">
-            <label for="title" class="form-label">Titre</label>
-            <input type="text" class="form-control" id="title" required>
+        </div>
+        
+        <div class="col-md-6">
+          <div class="card auth-form">
+            <div class="card-header">
+              <h5>Inscription</h5>
+            </div>
+            <div class="card-body">
+              <form id="registerForm">
+                <div class="mb-3">
+                  <label for="registerUsername" class="form-label">Nom d'utilisateur</label>
+                  <input type="text" class="form-control" id="registerUsername" required>
+                </div>
+                <div class="mb-3">
+                  <label for="registerEmail" class="form-label">Email</label>
+                  <input type="email" class="form-control" id="registerEmail" required>
+                </div>
+                <div class="mb-3">
+                  <label for="registerPassword" class="form-label">Mot de passe</label>
+                  <input type="password" class="form-control" id="registerPassword" required>
+                </div>
+                <button type="submit" class="btn btn-success">S'inscrire</button>
+              </form>
+            </div>
           </div>
-          <div class="mb-3">
-            <label for="description" class="form-label">Description</label>
-            <textarea class="form-control" id="description" rows="3"></textarea>
-          </div>
-          <button type="submit" class="btn btn-primary" id="submitBtn">Ajouter</button>
-          <button type="button" class="btn btn-secondary d-none" id="cancelBtn">Annuler</button>
-        </form>
+        </div>
       </div>
     </div>
     
-    <!-- Liste des livres -->
-    <h2>Liste des livres</h2>
-    <div id="booksList" class="row">
-      <!-- Les livres seront ajoutés ici dynamiquement -->
+    <!-- Section de contenu (visible après authentification) -->
+    <div id="contentContainer" style="display: none;">
+      <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+          <span>Connecté en tant que: <strong id="usernameDisplay"></strong></span>
+        </div>
+        <button class="btn btn-outline-danger" id="logoutBtn">Déconnexion</button>
+      </div>
+      
+      <!-- Formulaire pour ajouter/modifier un livre -->
+      <div class="card book-form">
+        <div class="card-header">
+          <h5 id="formTitle">Ajouter un nouveau livre</h5>
+        </div>
+        <div class="card-body">
+          <form id="bookForm">
+            <input type="hidden" id="bookId">
+            <div class="mb-3">
+              <label for="author" class="form-label">Auteur</label>
+              <input type="text" class="form-control" id="author" required>
+            </div>
+            <div class="mb-3">
+              <label for="title" class="form-label">Titre</label>
+              <input type="text" class="form-control" id="title" required>
+            </div>
+            <div class="mb-3">
+              <label for="description" class="form-label">Description</label>
+              <textarea class="form-control" id="description" rows="3"></textarea>
+            </div>
+            <button type="submit" class="btn btn-primary" id="submitBtn">Ajouter</button>
+            <button type="button" class="btn btn-secondary d-none" id="cancelBtn">Annuler</button>
+          </form>
+        </div>
+      </div>
+      
+      <!-- Liste des livres -->
+      <h2>Liste des livres</h2>
+      <div id="booksList" class="row">
+        <!-- Les livres seront ajoutés ici dynamiquement -->
+      </div>
+    </div>
+    
+    <!-- Alerte pour les messages -->
+    <div class="alert alert-dismissible fade" role="alert" id="alertMessage" style="position: fixed; top: 20px; right: 20px; display: none;">
+      <span id="alertText"></span>
+      <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
     </div>
   </div>
   
   <script>
     document.addEventListener('DOMContentLoaded', () => {
+      // Éléments du DOM
+      const loginForm = document.getElementById('loginForm');
+      const registerForm = document.getElementById('registerForm');
+      const authContainer = document.getElementById('authContainer');
+      const contentContainer = document.getElementById('contentContainer');
+      const logoutBtn = document.getElementById('logoutBtn');
+      const usernameDisplay = document.getElementById('usernameDisplay');
       const bookForm = document.getElementById('bookForm');
       const formTitle = document.getElementById('formTitle');
       const submitBtn = document.getElementById('submitBtn');
       const cancelBtn = document.getElementById('cancelBtn');
       const booksList = document.getElementById('booksList');
+      const alertMessage = document.getElementById('alertMessage');
+      const alertText = document.getElementById('alertText');
       
       let isEditing = false;
+      let token = localStorage.getItem('token');
       
-      // Charger tous les livres au chargement de la page
-      fetchBooks();
+      // Vérifier si l'utilisateur est déjà authentifié
+      checkAuth();
       
-      // Gestionnaire pour le formulaire
+      // Gestionnaire pour le formulaire de connexion
+      loginForm.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        
+        const email = document.getElementById('loginEmail').value;
+        const password = document.getElementById('loginPassword').value;
+        
+        try {
+          const response = await fetch('/auth/login', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ email, password })
+          });
+          
+          const data = await response.json();
+          
+          if (!response.ok) {
+            throw new Error(data.error || 'Erreur de connexion');
+          }
+          
+          // Stocker le token et passer à l'interface principale
+          token = data.token;
+          localStorage.setItem('token', token);
+          showMessage('Connexion réussie', 'success');
+          checkAuth();
+        } catch (error) {
+          showMessage(error.message, 'danger');
+        }
+      });
+      
+      // Gestionnaire pour le formulaire d'inscription
+      registerForm.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        
+        const username = document.getElementById('registerUsername').value;
+        const email = document.getElementById('registerEmail').value;
+        const password = document.getElementById('registerPassword').value;
+        
+        try {
+          const response = await fetch('/auth/register', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ username, email, password })
+          });
+          
+          const data = await response.json();
+          
+          if (!response.ok) {
+            throw new Error(data.error || 'Erreur d\'inscription');
+          }
+          
+          // Stocker le token et passer à l'interface principale
+          token = data.token;
+          localStorage.setItem('token', token);
+          showMessage('Inscription réussie', 'success');
+          checkAuth();
+        } catch (error) {
+          showMessage(error.message, 'danger');
+        }
+      });
+      
+      // Gestionnaire pour la déconnexion
+      logoutBtn.addEventListener('click', () => {
+        localStorage.removeItem('token');
+        token = null;
+        showAuthUI();
+        showMessage('Déconnexion réussie', 'info');
+      });
+      
+      // Gestionnaire pour le formulaire de livre
       bookForm.addEventListener('submit', async (e) => {
         e.preventDefault();
+        
+        if (!token) {
+          showMessage('Vous devez être connecté pour effectuer cette action', 'warning');
+          return;
+        }
         
         const bookId = document.getElementById('bookId').value;
         const author = document.getElementById('author').value;
@@ -90,8 +248,7 @@
           // Recharger la liste des livres
           fetchBooks();
         } catch (error) {
-          console.error('Erreur:', error);
-          alert('Une erreur est survenue');
+          showMessage(error.message, 'danger');
         }
       });
       
@@ -100,7 +257,50 @@
         resetForm();
       });
       
-      // Fonctions
+      // Fonctions d'authentification
+      async function checkAuth() {
+        if (!token) {
+          showAuthUI();
+          return;
+        }
+        
+        try {
+          const response = await fetch('/auth/verify', {
+            headers: {
+              'Authorization': `Bearer ${token}`
+            }
+          });
+          
+          const data = await response.json();
+          
+          if (data.authenticated) {
+            // Utilisateur authentifié
+            usernameDisplay.textContent = data.user.username;
+            showMainUI();
+            fetchBooks();
+          } else {
+            // Token invalide
+            localStorage.removeItem('token');
+            token = null;
+            showAuthUI();
+          }
+        } catch (error) {
+          console.error('Erreur de vérification:', error);
+          showAuthUI();
+        }
+      }
+      
+      function showAuthUI() {
+        authContainer.style.display = 'block';
+        contentContainer.style.display = 'none';
+      }
+      
+      function showMainUI() {
+        authContainer.style.display = 'none';
+        contentContainer.style.display = 'block';
+      }
+      
+      // Fonctions pour les livres
       async function fetchBooks() {
         try {
           const response = await fetch('/api/books');
@@ -137,8 +337,21 @@
         `;
         
         // Ajouter les gestionnaires d'événements
-        col.querySelector('.edit-btn').addEventListener('click', () => editBook(book));
-        col.querySelector('.delete-btn').addEventListener('click', () => deleteBook(book.id));
+        col.querySelector('.edit-btn').addEventListener('click', () => {
+          if (!token) {
+            showMessage('Vous devez être connecté pour modifier un livre', 'warning');
+            return;
+          }
+          editBook(book);
+        });
+        
+        col.querySelector('.delete-btn').addEventListener('click', () => {
+          if (!token) {
+            showMessage('Vous devez être connecté pour supprimer un livre', 'warning');
+            return;
+          }
+          deleteBook(book.id);
+        });
         
         return col;
       }
@@ -164,32 +377,40 @@
         const response = await fetch(`/api/books/${id}`, {
           method: 'PUT',
           headers: {
-            'Content-Type': 'application/json'
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
           },
           body: JSON.stringify(bookData)
         });
         
+        const data = await response.json();
+        
         if (!response.ok) {
-          throw new Error('Erreur lors de la mise à jour du livre');
+          throw new Error(data.error || 'Erreur lors de la mise à jour du livre');
         }
         
-        return response.json();
+        showMessage('Livre mis à jour avec succès', 'success');
+        return data;
       }
       
       async function createBook(bookData) {
         const response = await fetch('/api/books', {
           method: 'POST',
           headers: {
-            'Content-Type': 'application/json'
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
           },
           body: JSON.stringify(bookData)
         });
         
+        const data = await response.json();
+        
         if (!response.ok) {
-          throw new Error('Erreur lors de la création du livre');
+          throw new Error(data.error || 'Erreur lors de la création du livre');
         }
         
-        return response.json();
+        showMessage('Livre ajouté avec succès', 'success');
+        return data;
       }
       
       async function deleteBook(id) {
@@ -199,18 +420,22 @@
         
         try {
           const response = await fetch(`/api/books/${id}`, {
-            method: 'DELETE'
+            method: 'DELETE',
+            headers: {
+              'Authorization': `Bearer ${token}`
+            }
           });
           
           if (!response.ok) {
-            throw new Error('Erreur lors de la suppression du livre');
+            const data = await response.json();
+            throw new Error(data.error || 'Erreur lors de la suppression du livre');
           }
           
+          showMessage('Livre supprimé avec succès', 'success');
           // Recharger la liste des livres
           fetchBooks();
         } catch (error) {
-          console.error('Erreur:', error);
-          alert('Une erreur est survenue lors de la suppression');
+          showMessage(error.message, 'danger');
         }
       }
       
@@ -221,6 +446,18 @@
         formTitle.textContent = 'Ajouter un nouveau livre';
         submitBtn.textContent = 'Ajouter';
         cancelBtn.classList.add('d-none');
+      }
+      
+      // Fonction d'affichage des messages
+      function showMessage(message, type) {
+        alertText.textContent = message;
+        alertMessage.className = `alert alert-${type} alert-dismissible fade show`;
+        alertMessage.style.display = 'block';
+        
+        // Masquer le message après 5 secondes
+        setTimeout(() => {
+          alertMessage.style.display = 'none';
+        }, 5000);
       }
     });
   </script>
